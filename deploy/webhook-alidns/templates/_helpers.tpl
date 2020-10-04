@@ -46,3 +46,7 @@ Create chart name and version as used by the chart label.
 {{- define "webhook-alidns.servingCertificate" -}}
 {{ printf "%s-webhook-tls" (include "webhook-alidns.fullname" .) }}
 {{- end -}}
+
+{{- define "webhook-alidns.clusterIssuer" -}}
+{{ printf "%s-cluster-issuer" (include "webhook-alidns.fullname" .) }}
+{{- end -}}

@@ -28,7 +28,7 @@ $ kubectl -n cert-manager create secret generic alidns-credentials --from-litera
 ClusterIssuer
 
 ```yaml
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-prod

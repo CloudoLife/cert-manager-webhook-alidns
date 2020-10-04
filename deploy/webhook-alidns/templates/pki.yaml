@@ -1,7 +1,7 @@
 ---
 # Create a selfsigned Issuer, in order to create a root CA certificate for
 # signing webhook serving certificates
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
   name: {{ include "webhook-alidns.selfSignedIssuer" . }}
@@ -17,7 +17,7 @@ spec:
 ---
 
 # Generate a CA Certificate used to sign certificates for the webhook
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
   name: {{ include "webhook-alidns.rootCACertificate" . }}
@@ -38,7 +38,7 @@ spec:
 ---
 
 # Create an Issuer that uses the above generated CA certificate to issue certs
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
   name: {{ include "webhook-alidns.rootCAIssuer" . }}
@@ -55,7 +55,7 @@ spec:
 ---
 
 # Finally, generate a serving certificate for the webhook to use
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
   name: {{ include "webhook-alidns.servingCertificate" . }}
@@ -74,3 +74,43 @@ spec:
   - {{ include "webhook-alidns.fullname" . }}
   - {{ include "webhook-alidns.fullname" . }}.{{ .Release.Namespace }}
   - {{ include "webhook-alidns.fullname" . }}.{{ .Release.Namespace }}.svc
+
+{{- if .Values.clusterIssuer.enabled }}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: {{ include "webhook-alidns.clusterIssuer" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ include "webhook-alidns.name" . }}
+    chart: {{ include "webhook-alidns.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  acme:
+{{- if .Values.clusterIssuer.staging }}
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+{{- else }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+{{- end }}
+    email: {{ .Values.clusterIssuer.email }}
+    privateKeySecretRef:
+      name: {{ include "webhook-alidns.fullname" . }}-letsencrypt
+    solvers:
+    - dns01:
+        webhook:
+          groupName: {{ .Values.groupName }}
+          solverName: alidns
+          config:
+            accessKeyId: {{ required ".Values.secrets.accessKeyId is required" .Values.secrets.accessKeyId }}
+            accessKeySecretRef:
+              key: accessKeySecret
+              name: {{ include "webhook-alidns.fullname" . }}-secret
+            regionId: {{ required ".Values.regionId is required" .Values.regionId }}
+            ttl: 600
+      {{- if .Values.clusterIssuer.selector }}
+      selector:
+{{ toYaml .Values.clusterIssuer.selector | indent 8 }}
+      {{- end }}
+{{- end }}
